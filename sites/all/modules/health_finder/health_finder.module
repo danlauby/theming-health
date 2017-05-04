@@ -1,0 +1,119 @@
+<?php
+
+
+function health_finder_menu() {
+  $items = array();
+  $items['health_finder'] = array(
+    'title' => 'Topics',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('health_finder_form'),
+    'access callback' => MENU_NORMAL_ITEM,
+  );
+  $items['health_finder_success_page'] = array(
+      'title' => 'Success',
+      'page callback' => 'health_finder_success',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function health_finder_form() {
+    $form['health_finder'] = array(
+        '#title' => 'Trigger',
+        '#type' => 'textfield',
+        '#description' => t('Search specialities'),
+        // '#required' => TRUE,
+    );
+    $form['location'] = array(
+        '#title' => 'Location',
+        '#type' => 'textfield',
+        '#description' => t('Find a doctor near you.'),
+        // '#required' => TRUE,
+    );
+    $form['resources'] = array(
+        '#title' => 'Resources',
+        '#type' => 'textfield',
+        '#description' => t('Find additional resources'),
+        // '#required' => TRUE,
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Search',
+    );
+    return $form;
+}
+
+
+
+
+function health_finder_form_submit($form, &$form_state) {
+$trigger = $form_state['values']['health_finder'];
+$doc_location = $form_state['values']['location'];
+$resources = $form_state['values']['resources'];
+// $form_state['redirect'] = "https://healthfinder.gov/api/v2/topicsearch.json?api_key=cjbntfusnxaqvseu&Keyword=fish";
+
+// Get cURL resource
+$curl = curl_init();
+// Set some options - we are passing in a useragent too here
+curl_setopt_array($curl, array(
+    CURLOPT_RETURNTRANSFER => 1,
+    CURLOPT_URL => "https://healthfinder.gov/api/v2/topicsearch.json?api_key=&Keyword=$trigger",
+    CURLOPT_USERAGENT => 'My Request'
+));
+
+// Send the request & save response to $resp
+$result = curl_exec($curl);
+
+if($result === FALSE) {
+    drupal_set_message(t('Error'), 'error');
+}
+// Close request to clear up some resources
+curl_close($curl);
+
+
+
+$ch = curl_init();
+
+curl_setopt_array($ch, array(
+    CURLOPT_RETURNTRANSFER => 1,
+    CURLOPT_URL => "https://api.betterdoctor.com/2016-03-01/doctors?query=anxiety&location=" . $doc_location . "&user_location=37.773%2C-122.413&skip=0&limit=10&user_key=",
+    CURLOPT_USERAGENT => 'Something'
+));
+    $doctor_results = curl_exec($ch);
+    if($doctor_results === FALSE) {
+        drupal_set_message(t('Error'), 'error');
+    }
+    curl_close($ch);
+    $doctor_array = json_decode($doctor_results, true);
+    $health_array = json_decode($result, true);
+    $_SESSION['results'] = $health_array;
+    $_SESSION['doctor_results'] = $doctor_array;
+
+    // watchdog('health_finder', $form_state['clicked_button']['#value']);
+    $form_state['redirect'] = 'health_finder_success_page';
+    }
+
+function health_finder_success() {
+    $answer = $_SESSION['results'];
+    $doctor_answer = $_SESSION['doctor_results'];
+    $doctor_answer = $doctor_answer['data'];
+    echo sizeof($doctor_answer);
+
+    $search_results = $answer['Result']['Resources']['Resource'];
+    for($i = 0; $i < sizeof($search_results); $i++) {
+         echo'<h1>Start</h1> <br><br>';
+         echo $search_results[$i]["Title"];
+         echo'<h1>end</h1> <br>';
+    }
+    for($j = 0; $j < sizeof($doctor_answer); $j++) {
+         echo $doctor_answer[$j]['profile']['first_name'];
+         echo '<img src="' . $doctor_answer[$j]['profile']['image_url'] . '" alt="No image" />';
+    }
+    // var_dump($doctor_answer);
+    // echo '<pre>';
+    // var_dump($answer['Result']['Resources']['Resource'][0]['Title']);
+    // echo '</pre>';
+    // exit;
+    // return $answer;
+}

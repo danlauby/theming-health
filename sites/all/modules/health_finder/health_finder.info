@@ -1,0 +1,5 @@
+name = Health Finder
+description = make a Health Finder API call
+core = 7.x
+package = Special API
+file[] = health_finder.module
